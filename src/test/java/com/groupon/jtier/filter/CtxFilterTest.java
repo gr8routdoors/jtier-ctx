@@ -34,9 +34,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class CtxFilterTest {
 
-    MockHttpServletRequest req;
-    MockHttpServletResponse res;
-    AtomicReference<Ctx> ctx;
+    private MockHttpServletRequest req;
+    private MockHttpServletResponse res;
+    private AtomicReference<Ctx> ctx;
 
     @Before
     public void setUp() {
