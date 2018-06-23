@@ -17,6 +17,7 @@ import com.groupon.jtier.Ctx;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.mock.web.MockAsyncContext;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -132,5 +133,31 @@ public class CtxFilterTest {
 
         // Verify
         assertThat(defaultCtx).isNotNull();
+    }
+
+    @Test
+    public void cleansUpRequestContextOnAsyncRequests() throws Exception {
+        // Configure
+        final CtxFilter filter = new CtxFilter();
+        final MockAsyncContext asyncContext = new MockAsyncContext(req, res);
+
+        final MockFilterChain chain = new MockFilterChain(new GenericServlet() {
+            @Override
+            public void service(final ServletRequest req,
+                                final ServletResponse res) throws ServletException, IOException {
+                ctx.set(Ctx.fromThread().get());
+
+                assertThat(ctx.get().isCancelled()).isFalse();
+            }
+        });
+
+        // Run
+        req.setAsyncStarted(true);
+        req.setAsyncContext(asyncContext);
+        filter.doFilter(req, res, chain);
+        req.getAsyncContext().complete();
+
+        // Verify
+        assertThat(ctx.get().isCancelled()).isTrue();
     }
 }

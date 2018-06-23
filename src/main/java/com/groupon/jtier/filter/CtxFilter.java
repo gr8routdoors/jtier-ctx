@@ -17,6 +17,8 @@ import com.groupon.jtier.Ctx;
 
 import java.io.IOException;
 
+import javax.servlet.AsyncEvent;
+import javax.servlet.AsyncListener;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -67,12 +69,49 @@ public class CtxFilter implements Filter {
             chain.doFilter(servletRequest, response);
         }
         finally {
-            requestCtx.cancel();
+            cancelRequestCtx(servletRequest, requestCtx);
         }
     }
 
     @Override
     public void destroy() {
+    }
 
+    /**
+     * Utility method for cancelling the context for a given request that handles both sync and async request modes.
+     *
+     * @param request   The servlet request.
+     * @param requestCtx   The request context.
+     * @throws  NullPointerException  If {@code request} or {@code requestCtx} is {@code null}.
+     */
+    private void cancelRequestCtx(final ServletRequest request, Ctx requestCtx) {
+
+        if (request.isAsyncStarted()) {
+            request.getAsyncContext().addListener(new AsyncListener() {
+
+                @Override
+                public void onComplete(AsyncEvent event) throws IOException {
+                    requestCtx.cancel();
+                }
+
+                @Override
+                public void onTimeout(AsyncEvent event) throws IOException {
+                    requestCtx.cancel();
+                }
+
+                @Override
+                public void onError(AsyncEvent event) throws IOException {
+                    requestCtx.cancel();
+                }
+
+                @Override
+                public void onStartAsync(AsyncEvent event) throws IOException {
+
+                }
+            });
+        }
+        else {
+            requestCtx.cancel();
+        }
     }
 }
