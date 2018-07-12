@@ -114,6 +114,15 @@ public class Ctx implements AutoCloseable {
         return new Ctx(this.life, next);
     }
 
+    public <T> Ctx with(final Map<String, T> values, final Class<T> valueType) {
+        final Map<Key<?>, Object> next = new HashMap<>();
+        for (Map.Entry<String, T> entry : values.entrySet()) {
+            Key<?> key = key(entry.getKey(), valueType);
+            next.put(key, entry.getValue());
+        }
+        return new Ctx(this.life, next);
+    }
+
     public Ctx createChild() {
         return new Ctx(new Life(Optional.of(this.life)), this.values);
     }

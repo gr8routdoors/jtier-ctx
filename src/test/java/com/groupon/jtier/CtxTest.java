@@ -17,6 +17,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -255,5 +257,36 @@ public class CtxTest {
 
         final String rs = f2.apply("Brian");
         assertThat(rs).isEqualTo("bonjour, Brian");
+    }
+
+    @Test
+    public void testAllowsSettingValuesWithAMap() throws Exception {
+        final Map<String, String> map = new HashMap<>();
+        map.put("foo", "bar");
+        map.put("baz", "bat");
+
+        Ctx.Key<String> fooKey = Ctx.key("foo", String.class);
+        Ctx.Key<String> bazKey = Ctx.key("baz", String.class);
+
+        final Ctx ctx = Ctx.empty().with(map, String.class);
+
+        assertThat(ctx.get(fooKey).get()).isEqualTo("bar");
+        assertThat(ctx.get(bazKey).get()).isEqualTo("bat");
+    }
+
+    @Test
+    public void testSettingValuesWithAnEmptyMap() throws Exception {
+        final Map<String, String> map = new HashMap<>();
+
+        Ctx.Key<String> fooKey = Ctx.key("foo", String.class);
+
+        final Ctx ctx = Ctx.empty().with(map, String.class);
+
+        assertThat(ctx.get(fooKey).isPresent()).isFalse();
+    }
+
+    @Test
+    public void testSettingValuesWithANullMap() throws Exception {
+        assertThatThrownBy(() -> Ctx.empty().with((Map) null, String.class)).isInstanceOf(NullPointerException.class);
     }
 }
