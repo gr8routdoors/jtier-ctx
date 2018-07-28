@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -55,13 +56,13 @@ public class Ctx implements AutoCloseable {
 
     private static final ThreadLocal<Ctx> ATTACHED = ThreadLocal.withInitial(Ctx::empty);
 
-    private final Life              life;
-    private final ConcurrentHashMap<Key<?>, Object> values;
+    private final Life                          life;
+    private final ConcurrentMap<Key<?>, Object> values;
 
     private final List<Runnable> attachListeners = new CopyOnWriteArrayList<>();
     private final List<Runnable> detachListeners = new CopyOnWriteArrayList<>();
 
-    private Ctx(final Life life, final ConcurrentHashMap<Key<?>, Object> values) {
+    private Ctx(final Life life, final ConcurrentMap<Key<?>, Object> values) {
         this.life = life;
         this.values = values;
     }
