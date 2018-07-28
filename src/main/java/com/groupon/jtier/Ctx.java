@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -54,19 +55,33 @@ public class Ctx implements AutoCloseable {
 
     private static final ThreadLocal<Ctx> ATTACHED = ThreadLocal.withInitial(Ctx::empty);
 
-    private final Life life;
-    private final Map<Key<?>, Object> values;
+    private final Life              life;
+    private final ConcurrentHashMap<Key<?>, Object> values;
 
     private final List<Runnable> attachListeners = new CopyOnWriteArrayList<>();
     private final List<Runnable> detachListeners = new CopyOnWriteArrayList<>();
 
-    private Ctx(final Life life, final Map<Key<?>, Object> values) {
+    private Ctx(final Life life, final ConcurrentHashMap<Key<?>, Object> values) {
         this.life = life;
         this.values = values;
     }
 
+    /**
+     * Creates an empty context.
+     *
+     * @return  The newly created context.
+     */
     public static Ctx empty() {
-        return new Ctx(new Life(Optional.empty()), Collections.emptyMap());
+        return new Ctx(new Life(Optional.empty()), new ConcurrentHashMap<>(Collections.emptyMap()));
+    }
+
+    /**
+     * An alias for {@link #empty()} for creating a context.
+     *
+     * @return The new empty context.
+     */
+    public static Ctx create() {
+        return Ctx.empty();
     }
 
     /**
@@ -96,6 +111,8 @@ public class Ctx implements AutoCloseable {
     }
 
     /**
+     * Attaches the context to the current thread.
+     *
      * @return
      */
     public Ctx attach() {
@@ -118,14 +135,61 @@ public class Ctx implements AutoCloseable {
         return this.propagate(c).call();
     }
 
+    /**
+     * Add a value to the context.
+     *
+     * @param key    The key for looking up the value.
+     * @param value  The value.
+     * @param <T>    The type of the value.
+     * @return       The context with the new value in it.
+     */
     public <T> Ctx with(final Key<T> key, final T value) {
-        final Map<Key<?>, Object> next = new HashMap<>(this.values);
-        next.put(key, value);
-        return new Ctx(this.life, next);
+        values.put(key, value);
+        return this;
+    }
+
+    /**
+     * Convenience method to add values from a map of {@link String} based keys.
+     *
+     * @param values     The map of key value pairs
+     * @param valueType  The value type.
+     * @param <T>        The value type.
+     * @return           A reference to the context.
+     */
+    public <T> Ctx with(final Map<String, T> values, final Class<T> valueType) {
+        for (Map.Entry<String, T> entry : values.entrySet()) {
+            Key<T> key = key(entry.getKey(), valueType);
+            with(key, entry.getValue());
+        }
+        return this;
+    }
+
+    /**
+     * Alias to {@link #with(Key, Object)}.
+     *
+     * @param key    The key for looking up the value.
+     * @param value  The value.
+     * @param <T>    The type of the value.
+     * @return       The context with the new value in it.
+     */
+    public <T> Ctx add(final Key<T>key, final T value) {
+        return with(key, value);
+    }
+
+    /**
+     * Alias to {@link #with(Map, Class)}.
+     *
+     * @param values     The map of key value pairs
+     * @param valueType  The value type.
+     * @param <T>        The value type.
+     * @return           A reference to the context.
+     */
+    public <T> Ctx add(final Map<String, T> values, final Class<T> valueType) {
+        return with(values, valueType);
     }
 
     public Ctx createChild() {
-        return new Ctx(new Life(Optional.of(this.life)), this.values);
+        return new Ctx(new Life(Optional.of(this.life)), new ConcurrentHashMap<>(values));
     }
 
     public <T> Optional<T> get(final Key<T> key) {
@@ -163,6 +227,15 @@ public class Ctx implements AutoCloseable {
         result = 31 * result + this.attachListeners.hashCode();
         result = 31 * result + this.detachListeners.hashCode();
         return result;
+    }
+
+    /**
+     * Return whether the context contains any values.
+     *
+     * @return  {@code true} if the context has values set, {@code false} otherwise.
+     */
+    public boolean isEmpty() {
+        return values.isEmpty();
     }
 
     /**
@@ -291,7 +364,7 @@ public class Ctx implements AutoCloseable {
      * all the values associated with this context, but have its own lifecycle.
      */
     public Ctx newRoot() {
-        return new Ctx(new Life(Optional.empty()), new HashMap<>(this.values));
+        return new Ctx(new Life(Optional.empty()), new ConcurrentHashMap<>(this.values));
     }
 
     /**

@@ -17,6 +17,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -27,6 +29,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class CtxTest {
 
@@ -41,7 +44,7 @@ public class CtxTest {
     @Test
     public void testKeyOnChildIsNotOnParent() throws Exception {
         final Ctx root = Ctx.empty();
-        final Ctx child = root.with(NAME, "Brian");
+        final Ctx child = root.createChild().with(NAME, "Brian");
 
         assertThat(child.get(NAME).get()).isEqualTo("Brian");
         assertThat(root.get(NAME)).isEmpty();
@@ -230,5 +233,91 @@ public class CtxTest {
 
         final String rs = f2.apply("Brian");
         assertThat(rs).isEqualTo("bonjour, Brian");
+    }
+
+    @Test
+    public void testCreateMakesAnEmptyContext() {
+        final Ctx ctx = Ctx.create();
+
+        assertThat(ctx).isNotNull();
+        assertThat(ctx.isEmpty()).isTrue();
+    }
+
+    @Test
+    public void testIsEmpty() {
+        final Ctx emptyCtx = Ctx.empty();
+        final Ctx populatedCtx = Ctx.empty().with(Ctx.key("foo", String.class), "bar");
+
+        assertThat(emptyCtx.isEmpty()).isTrue();
+        assertThat(populatedCtx.isEmpty()).isFalse();
+    }
+
+    @Test
+    public void testAddValue() {
+        final Ctx.Key<String> key = Ctx.key("foo", String.class);
+        final Ctx ctx = Ctx.empty()
+                           .add(key, "bar");
+
+        assertThat(ctx.get(key).isPresent()).isTrue();
+        assertThat(ctx.get(key).get()).isEqualTo("bar");
+    }
+
+    @Test
+    public void testAllowsSettingValuesWithAMap() throws Exception {
+        final Map<String, String> map = new HashMap<>();
+        map.put("foo", "bar");
+        map.put("baz", "bat");
+
+        Ctx.Key<String> fooKey = Ctx.key("foo", String.class);
+        Ctx.Key<String> bazKey = Ctx.key("baz", String.class);
+
+        final Ctx ctx = Ctx.empty().with(map, String.class);
+
+        assertThat(ctx.get(fooKey).get()).isEqualTo("bar");
+        assertThat(ctx.get(bazKey).get()).isEqualTo("bat");
+    }
+    @Test
+    public void testSettingValuesWithAnEmptyMap() throws Exception {
+        final Map<String, String> map = new HashMap<>();
+
+        Ctx.Key<String> fooKey = Ctx.key("foo", String.class);
+        final Ctx ctx = Ctx.empty().with(map, String.class);
+
+        assertThat(ctx.get(fooKey).isPresent()).isFalse();
+    }
+    @Test
+    public void testSettingValuesWithANullMap() throws Exception {
+        assertThatThrownBy(() -> Ctx.empty().with((Map) null, String.class)).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    public void testAddSupportsMap() {
+        final Map<String, String> map = new HashMap<>();
+        map.put("foo", "bar");
+        map.put("baz", "bat");
+
+        Ctx.Key<String> fooKey = Ctx.key("foo", String.class);
+        Ctx.Key<String> bazKey = Ctx.key("baz", String.class);
+
+        final Ctx ctx = Ctx.empty().with(map, String.class);
+
+        assertThat(ctx.get(fooKey).get()).isEqualTo("bar");
+        assertThat(ctx.get(bazKey).get()).isEqualTo("bat");
+    }
+
+    @Test
+    public void testCtxReferenceDoesntChangeOnValueUpdate() {
+
+        final Ctx.Key<String> fooKey = Ctx.key("foo", String.class);
+        final Ctx.Key<String> bazKey = Ctx.key("baz", String.class);
+
+        final Ctx ctxBefore = Ctx.empty().with(fooKey, "bar");
+        final Ctx ctxAfter = ctxBefore.add(bazKey, "bat");
+
+        assertThat(ctxBefore).isEqualTo(ctxAfter);
+        assertThat(ctxBefore.get(fooKey).get()).isEqualTo("bar");
+        assertThat(ctxBefore.get(bazKey).get()).isEqualTo("bat");
+        assertThat(ctxAfter.get(fooKey).get()).isEqualTo("bar");
+        assertThat(ctxBefore.get(bazKey).get()).isEqualTo("bat");
     }
 }
