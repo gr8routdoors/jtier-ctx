@@ -320,4 +320,16 @@ public class CtxTest {
         assertThat(ctxAfter.get(fooKey).get()).isEqualTo("bar");
         assertThat(ctxBefore.get(bazKey).get()).isEqualTo("bat");
     }
+
+    @Test
+    public void testCancelClearsAllValues() {
+        final Ctx.Key<String> key = Ctx.key("foo", String.class);
+        final Ctx ctx = Ctx.empty()
+                           .add(key, "bar");
+
+        ctx.cancel();
+
+        assertThat(ctx.isEmpty()).isTrue();
+        assertThat(ctx.get(key).isPresent()).isFalse();
+    }
 }

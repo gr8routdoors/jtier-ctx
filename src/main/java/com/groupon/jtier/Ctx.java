@@ -292,9 +292,32 @@ public class Ctx implements AutoCloseable {
 
     /**
      * Cancel this context.
+     *
+     * @param cause    The exception that created a need for cancellation.
      */
     public void cancel(Throwable cause) {
-        this.life.cancel(Optional.of(cause));
+        cancel(Optional.of(cause));
+    }
+
+    /**
+     * Cancel this context.
+     */
+    public void cancel() {
+        cancel(Optional.empty());
+    }
+
+    /**
+     * Cancel this context.
+     *
+     * @param cause    The optional exception that created a need for cancellation.
+     */
+    protected void cancel(Optional<Throwable> cause) {
+        this.life.cancel(cause);
+        this.values.clear();
+    }
+
+    public boolean isCancelled() {
+        return this.life.isCancelled();
     }
 
     public void detach() {
@@ -315,17 +338,6 @@ public class Ctx implements AutoCloseable {
     private void justAttach(Ctx toAttach) {
         ATTACHED.set(toAttach);
         toAttach.attachListeners.forEach(Runnable::run);
-    }
-
-    /**
-     * Cancel this context.
-     */
-    public void cancel() {
-        this.life.cancel(Optional.empty());
-    }
-
-    public boolean isCancelled() {
-        return this.life.isCancelled();
     }
 
     /**
