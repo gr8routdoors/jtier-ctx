@@ -128,6 +128,15 @@ public class Ctx implements AutoCloseable {
         return this;
     }
 
+    /**
+     * @deprecated   Use {@link #attach()} instead.
+     *
+     * @return  A reference to the Ctx for Fluent method chaining.
+     */
+    public Ctx attachToThread() {
+        return attach();
+    }
+
     public void runAttached(final Runnable r) {
         this.propagate(r).run();
     }
