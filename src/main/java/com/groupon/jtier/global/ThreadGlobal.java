@@ -1,3 +1,16 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.groupon.jtier.global;
 
 import java.util.HashMap;
@@ -59,6 +72,16 @@ public class ThreadGlobal<T> extends InheritableThreadLocal<T> {
         return globals.get().containsKey(key) ? (ThreadGlobal<T>)globals.get().get(key) : new ThreadGlobal<T>(key);
     }
 
+    /**
+     * Return whether the given variable has been set.
+     *
+     * @param key   The variable name.
+     * @return      {@code true} if set, {@code false} otherwise.
+     */
+    public static boolean contains(String key) {
+        return globals.get().containsKey(key);
+    }
+
     /** Remove all global variables. */
     public static void clear() {
         Map<String, ThreadGlobal<?>> newGlobals = new WeakHashMap<>();
@@ -93,7 +116,7 @@ public class ThreadGlobal<T> extends InheritableThreadLocal<T> {
      *
      * @param name   The variable name.
      */
-    private ThreadGlobal(String name) {
+    protected ThreadGlobal(String name) {
         super();
         this.name = name;
     }
@@ -114,5 +137,22 @@ public class ThreadGlobal<T> extends InheritableThreadLocal<T> {
         Map<String, ThreadGlobal<?>> newGlobals = new WeakHashMap<>(globals.get());
         newGlobals.put(this.getName(), this);
         globals.set(newGlobals);
+    }
+
+    /**
+     * Automatically clears all global values upon close.  This is intended for use in the outermost try/catch blocks
+     * of framework or library code.  Be careful when you use this, as you'll be clearing all globals for the current
+     * thread and potentially hosing downstream code!
+     */
+    public static class AutoCloseable<T> extends ThreadGlobal<T> implements java.lang.AutoCloseable {
+
+        public AutoCloseable() {
+            super(null);
+        }
+
+        @Override
+        public void close() throws Exception {
+            ThreadGlobal.clear();
+        }
     }
 }
